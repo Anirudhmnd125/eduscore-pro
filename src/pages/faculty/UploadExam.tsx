@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { processAndEvaluateAnswerSheet, FullEvaluationResult } from "@/lib/api/evaluation";
+import { processAndEvaluateExam, FullEvaluationResult } from "@/lib/api/evaluation";
 
 type UploadStep = 1 | 2 | 3 | 4;
 
@@ -79,9 +79,10 @@ export default function UploadExam() {
     setProcessingStatus("Initializing AI evaluation...");
     
     try {
-      const result = await processAndEvaluateAnswerSheet({
+      const result = await processAndEvaluateExam({
         answerSheetFiles: examData.answerSheets,
-        modelAnswers: examData.modelAnswersText,
+        questionPaperFiles: examData.questionPaper,
+        modelAnswerFiles: examData.modelAnswers,
         rubric: examData.rubric,
         totalMarks: examData.totalMarks,
         onProgress: (step, progress) => {
@@ -125,7 +126,7 @@ export default function UploadExam() {
       case 1:
         return examData.examName && examData.subject && examData.totalMarks > 0;
       case 2:
-        return examData.modelAnswersText.length > 20;
+        return examData.questionPaper.length > 0 && examData.modelAnswers.length > 0;
       case 3:
         return examData.rubric.length > 20;
       case 4:
@@ -228,8 +229,8 @@ export default function UploadExam() {
           {currentStep === 2 && (
             <div className="space-y-6">
               <AcademicCardHeader 
-                title="Model Answers" 
-                description="Provide the faculty model answers for each question"
+                title="Question Paper & Model Answers" 
+                description="Upload the question paper and model answers as PDF files"
               />
               <div className="space-y-6">
                 <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
@@ -238,39 +239,47 @@ export default function UploadExam() {
                     AI Evaluation Source of Truth
                   </h4>
                   <p className="text-sm text-muted-foreground">
-                    The AI will ONLY use these model answers to evaluate student responses. 
-                    External knowledge will not be used. Be comprehensive and clear.
+                    The AI will extract content from your PDFs using OCR and use ONLY the model answers 
+                    to evaluate student responses. External knowledge will not be used.
                   </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="modelAnswersText">Model Answers</Label>
-                  <Textarea
-                    id="modelAnswersText"
-                    placeholder={`Q1: Definition of Linked List
-A linked list is a linear data structure where elements are stored in nodes. Each node contains:
-- Data field: stores the actual value
-- Pointer field: stores reference to next node
-Types: Singly, Doubly, Circular linked lists
+                
+                <div className="space-y-4">
+                  <div>
+                    <Label className="mb-2 block">Question Paper (PDF)</Label>
+                    <FileUploadZone
+                      accept=".pdf,.jpg,.jpeg,.png,.webp"
+                      multiple
+                      maxSize={20}
+                      onFilesSelected={(files) => setExamData({ ...examData, questionPaper: files })}
+                      label="Upload Question Paper"
+                      description="Upload the question paper as PDF or images"
+                    />
+                    {examData.questionPaper.length > 0 && (
+                      <p className="text-sm text-score-high mt-2 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4" />
+                        {examData.questionPaper.length} file(s) uploaded
+                      </p>
+                    )}
+                  </div>
 
-Q2: Time Complexity Analysis
-- Insertion at head: O(1)
-- Insertion at tail: O(n) without tail pointer, O(1) with tail pointer
-- Deletion: O(n) in worst case
-- Search: O(n)
-
-Q3: Stack vs Queue
-Stack: LIFO (Last In First Out)
-- Push and pop from same end
-- Examples: Undo operations, function calls
-
-Queue: FIFO (First In First Out)
-- Enqueue at rear, dequeue from front
-- Examples: Process scheduling, BFS
-...`}
-                    value={examData.modelAnswersText}
-                    onChange={(e) => setExamData({ ...examData, modelAnswersText: e.target.value })}
-                    className="min-h-[350px] font-mono text-sm"
-                  />
+                  <div>
+                    <Label className="mb-2 block">Model Answers (PDF)</Label>
+                    <FileUploadZone
+                      accept=".pdf,.jpg,.jpeg,.png,.webp"
+                      multiple
+                      maxSize={20}
+                      onFilesSelected={(files) => setExamData({ ...examData, modelAnswers: files })}
+                      label="Upload Model Answers"
+                      description="Upload the faculty model answers as PDF or images"
+                    />
+                    {examData.modelAnswers.length > 0 && (
+                      <p className="text-sm text-score-high mt-2 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4" />
+                        {examData.modelAnswers.length} file(s) uploaded
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

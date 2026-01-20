@@ -155,27 +155,87 @@ export async function evaluateFullExam(params: {
 }
 
 /**
- * Process multiple answer sheets (images/PDFs) and evaluate them
+ * Extract text from multiple files (images/PDFs) using OCR
  */
-export async function processAndEvaluateAnswerSheet(params: {
+export async function extractTextFromFiles(
+  files: File[],
+  onProgress?: (step: string, progress: number) => void,
+  startProgress: number = 0,
+  endProgress: number = 100
+): Promise<string> {
+  let combinedText = "";
+  
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const progress = startProgress + ((endProgress - startProgress) * (i + 1)) / files.length;
+    onProgress?.(`Processing file ${i + 1} of ${files.length}...`, progress);
+    
+    const ocrResult = await extractTextFromImage(file);
+    
+    if (ocrResult.success && ocrResult.data) {
+      combinedText += ocrResult.data.raw_text + "\n\n";
+    }
+  }
+  
+  return combinedText.trim();
+}
+
+/**
+ * Process a full exam evaluation with PDF uploads for question paper, model answers, and answer sheets
+ */
+export async function processAndEvaluateExam(params: {
   answerSheetFiles: File[];
-  modelAnswers: string;
+  questionPaperFiles: File[];
+  modelAnswerFiles: File[];
   rubric: string;
   totalMarks: number;
   onProgress?: (step: string, progress: number) => void;
 }): Promise<EvaluationApiResponse<FullEvaluationResult>> {
-  const { answerSheetFiles, modelAnswers, rubric, totalMarks, onProgress } = params;
+  const { 
+    answerSheetFiles, 
+    questionPaperFiles, 
+    modelAnswerFiles, 
+    rubric, 
+    totalMarks, 
+    onProgress 
+  } = params;
 
   try {
-    // Step 1: Extract text from all pages/images
-    onProgress?.("Extracting text from answer sheets...", 10);
+    // Step 1: Extract text from question paper
+    onProgress?.("Extracting question paper...", 5);
+    const questionPaperText = await extractTextFromFiles(
+      questionPaperFiles, 
+      onProgress, 
+      5, 
+      15
+    );
     
+    if (!questionPaperText) {
+      console.warn("Could not extract text from question paper");
+    }
+
+    // Step 2: Extract text from model answers
+    onProgress?.("Extracting model answers...", 15);
+    const modelAnswersText = await extractTextFromFiles(
+      modelAnswerFiles, 
+      onProgress, 
+      15, 
+      30
+    );
+    
+    if (!modelAnswersText) {
+      return { success: false, error: "Could not extract text from model answers PDF" };
+    }
+
+    // Step 3: Extract text from answer sheets
+    onProgress?.("Extracting student answers...", 30);
     const allExtractedAnswers: Array<{ question_id: string; answer_text: string }> = [];
     let rawTextCombined = "";
 
     for (let i = 0; i < answerSheetFiles.length; i++) {
       const file = answerSheetFiles[i];
-      onProgress?.(`Processing page ${i + 1} of ${answerSheetFiles.length}...`, 10 + (30 * (i + 1) / answerSheetFiles.length));
+      const progress = 30 + (30 * (i + 1) / answerSheetFiles.length);
+      onProgress?.(`Processing answer sheet page ${i + 1} of ${answerSheetFiles.length}...`, progress);
       
       const ocrResult = await extractTextFromImage(file);
       
@@ -192,7 +252,7 @@ export async function processAndEvaluateAnswerSheet(params: {
     }
 
     if (!rawTextCombined.trim()) {
-      return { success: false, error: "Could not extract any text from the uploaded files" };
+      return { success: false, error: "Could not extract any text from the uploaded answer sheets" };
     }
 
     // If no structured questions were found, create a single entry with all text
@@ -200,12 +260,12 @@ export async function processAndEvaluateAnswerSheet(params: {
       ? allExtractedAnswers 
       : [{ question_id: "Full Answer", answer_text: rawTextCombined }];
 
-    // Step 2: Evaluate the extracted answers
-    onProgress?.("Evaluating answers against rubric...", 50);
+    // Step 4: Evaluate the extracted answers
+    onProgress?.("Evaluating answers against rubric...", 70);
     
     const evaluationResult = await evaluateFullExam({
       extractedAnswers: answersToEvaluate,
-      modelAnswers,
+      modelAnswers: modelAnswersText,
       rubric,
       totalMarks,
     });
