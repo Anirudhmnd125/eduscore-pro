@@ -13,6 +13,7 @@ import FacultyDashboard from "./pages/faculty/FacultyDashboard";
 import UploadExam from "./pages/faculty/UploadExam";
 import FacultyEvaluations from "./pages/faculty/FacultyEvaluations";
 import EvaluationDetails from "./pages/faculty/EvaluationDetails";
+import EvaluationResult from "./pages/faculty/EvaluationResult";
 
 import StudentDashboard from "./pages/student/StudentDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/faculty/upload" element={<UploadExam />} />
             <Route path="/faculty/evaluations" element={<FacultyEvaluations />} />
             <Route path="/faculty/evaluations/:id" element={<EvaluationDetails />} />
+            <Route path="/faculty/evaluation-result" element={<EvaluationResult />} />
             <Route path="/faculty/sheets" element={<FacultyEvaluations />} />
             <Route path="/faculty/reports" element={<FacultyDashboard />} />
           </Route>

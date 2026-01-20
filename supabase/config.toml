@@ -1,0 +1,10 @@
+project_id = "uzwpkkxjqpsdspgzxybx"
+
+[functions.ocr-extract]
+verify_jwt = false
+
+[functions.evaluate-answer]
+verify_jwt = false
+
+[functions.evaluate-full-exam]
+verify_jwt = false
