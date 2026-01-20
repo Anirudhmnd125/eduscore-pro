@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -13,10 +14,12 @@ import {
   ClipboardList,
   Upload,
   CheckCircle,
-  Sparkles
+  Sparkles,
+  AlertCircle
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { processAndEvaluateAnswerSheet, FullEvaluationResult } from "@/lib/api/evaluation";
 
 type UploadStep = 1 | 2 | 3 | 4;
 
@@ -26,6 +29,7 @@ interface ExamData {
   totalMarks: number;
   questionPaper: File[];
   modelAnswers: File[];
+  modelAnswersText: string;
   rubric: string;
   answerSheets: File[];
 }
@@ -39,10 +43,15 @@ export default function UploadExam() {
     totalMarks: 100,
     questionPaper: [],
     modelAnswers: [],
+    modelAnswersText: "",
     rubric: "",
     answerSheets: [],
   });
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState("");
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [evaluationResult, setEvaluationResult] = useState<FullEvaluationResult | null>(null);
+  const [evaluationError, setEvaluationError] = useState<string | null>(null);
 
   const steps = [
     { number: 1, title: "Exam Details", icon: <FileText className="w-5 h-5" /> },
@@ -63,15 +72,52 @@ export default function UploadExam() {
     }
   };
 
-  const handleStartEvaluation = () => {
+  const handleStartEvaluation = async () => {
     setIsProcessing(true);
+    setEvaluationError(null);
+    setProcessingProgress(0);
+    setProcessingStatus("Initializing AI evaluation...");
     
-    // Simulate processing
-    setTimeout(() => {
+    try {
+      const result = await processAndEvaluateAnswerSheet({
+        answerSheetFiles: examData.answerSheets,
+        modelAnswers: examData.modelAnswersText,
+        rubric: examData.rubric,
+        totalMarks: examData.totalMarks,
+        onProgress: (step, progress) => {
+          setProcessingStatus(step);
+          setProcessingProgress(progress);
+        },
+      });
+
+      if (!result.success || !result.data) {
+        throw new Error(result.error || "Evaluation failed");
+      }
+
+      setEvaluationResult(result.data);
+      toast.success("Evaluation completed successfully!");
+      
+      // Store result in sessionStorage for the results page
+      sessionStorage.setItem("lastEvaluation", JSON.stringify({
+        examData: {
+          examName: examData.examName,
+          subject: examData.subject,
+          totalMarks: examData.totalMarks,
+        },
+        result: result.data,
+        timestamp: new Date().toISOString(),
+      }));
+      
+      navigate("/faculty/evaluation-result");
+      
+    } catch (error) {
+      console.error("Evaluation error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Evaluation failed";
+      setEvaluationError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
       setIsProcessing(false);
-      toast.success("Evaluation started! You will be notified when complete.");
-      navigate("/faculty/evaluations");
-    }, 2000);
+    }
   };
 
   const canProceed = () => {
@@ -79,7 +125,7 @@ export default function UploadExam() {
       case 1:
         return examData.examName && examData.subject && examData.totalMarks > 0;
       case 2:
-        return examData.questionPaper.length > 0 && examData.modelAnswers.length > 0;
+        return examData.modelAnswersText.length > 20;
       case 3:
         return examData.rubric.length > 20;
       case 4:
@@ -182,26 +228,48 @@ export default function UploadExam() {
           {currentStep === 2 && (
             <div className="space-y-6">
               <AcademicCardHeader 
-                title="Question Paper & Model Answers" 
-                description="Upload the question paper and model answers for reference"
+                title="Model Answers" 
+                description="Provide the faculty model answers for each question"
               />
               <div className="space-y-6">
-                <div>
-                  <Label className="mb-3 block">Question Paper</Label>
-                  <FileUploadZone
-                    accept=".pdf"
-                    onFilesSelected={(files) => setExamData({ ...examData, questionPaper: files })}
-                    label="Upload Question Paper"
-                    description="PDF format preferred"
-                  />
+                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                  <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    AI Evaluation Source of Truth
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    The AI will ONLY use these model answers to evaluate student responses. 
+                    External knowledge will not be used. Be comprehensive and clear.
+                  </p>
                 </div>
-                <div>
-                  <Label className="mb-3 block">Model Answers</Label>
-                  <FileUploadZone
-                    accept=".pdf"
-                    onFilesSelected={(files) => setExamData({ ...examData, modelAnswers: files })}
-                    label="Upload Model Answers"
-                    description="PDF format preferred"
+                <div className="space-y-2">
+                  <Label htmlFor="modelAnswersText">Model Answers</Label>
+                  <Textarea
+                    id="modelAnswersText"
+                    placeholder={`Q1: Definition of Linked List
+A linked list is a linear data structure where elements are stored in nodes. Each node contains:
+- Data field: stores the actual value
+- Pointer field: stores reference to next node
+Types: Singly, Doubly, Circular linked lists
+
+Q2: Time Complexity Analysis
+- Insertion at head: O(1)
+- Insertion at tail: O(n) without tail pointer, O(1) with tail pointer
+- Deletion: O(n) in worst case
+- Search: O(n)
+
+Q3: Stack vs Queue
+Stack: LIFO (Last In First Out)
+- Push and pop from same end
+- Examples: Undo operations, function calls
+
+Queue: FIFO (First In First Out)
+- Enqueue at rear, dequeue from front
+- Examples: Process scheduling, BFS
+...`}
+                    value={examData.modelAnswersText}
+                    onChange={(e) => setExamData({ ...examData, modelAnswersText: e.target.value })}
+                    className="min-h-[350px] font-mono text-sm"
                   />
                 </div>
               </div>
@@ -218,29 +286,36 @@ export default function UploadExam() {
                 <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
                   <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-primary" />
-                    AI Evaluation Guidelines
+                    Strict Rubric Enforcement
                   </h4>
                   <p className="text-sm text-muted-foreground">
-                    Provide a detailed marking scheme. Include question numbers, maximum marks, and key points to look for. 
-                    The AI will strictly follow this rubric for fair evaluation.
+                    The AI will assign marks STRICTLY according to this rubric. Include question numbers, 
+                    maximum marks, and specific criteria. Be explicit about partial credit rules.
                   </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="rubric">Marking Rubric</Label>
                   <Textarea
                     id="rubric"
-                    placeholder={`Example format:
-
-Q1 (10 marks):
+                    placeholder={`Q1 (10 marks):
 - Definition of linked list (2 marks)
-- Types of linked list (3 marks)
-- Advantages over arrays (3 marks)
-- Diagram (2 marks)
+- Node structure explanation (2 marks)
+- Types of linked list with descriptions (3 marks)
+- Diagram showing node connections (2 marks)
+- Real-world example (1 mark)
 
 Q2 (15 marks):
-- Algorithm explanation (5 marks)
-- Time complexity analysis (5 marks)
-- Code implementation (5 marks)
+- Correct algorithm explanation (5 marks)
+- Time complexity with justification (5 marks)
+- Space complexity analysis (3 marks)
+- Edge case handling (2 marks)
+
+Q3 (10 marks):
+- Stack definition and LIFO explanation (2 marks)
+- Queue definition and FIFO explanation (2 marks)
+- At least 3 differences (3 marks)
+- Real-world applications for each (2 marks)
+- Diagram comparison (1 mark)
 ...`}
                     value={examData.rubric}
                     onChange={(e) => setExamData({ ...examData, rubric: e.target.value })}
@@ -258,12 +333,12 @@ Q2 (15 marks):
                 description="Upload student answer booklets for evaluation"
               />
               <FileUploadZone
-                accept=".pdf,.jpg,.jpeg,.png"
+                accept=".jpg,.jpeg,.png,.webp"
                 multiple
                 maxSize={20}
                 onFilesSelected={(files) => setExamData({ ...examData, answerSheets: files })}
-                label="Upload Answer Sheets"
-                description="Upload PDF scans or images of answer booklets"
+                label="Upload Answer Sheet Images"
+                description="Upload scanned images of answer booklets (JPG, PNG, WEBP)"
               />
               
               {examData.answerSheets.length > 0 && (
@@ -272,11 +347,36 @@ Q2 (15 marks):
                     <CheckCircle className="w-6 h-6 text-score-high" />
                     <div>
                       <p className="font-medium text-foreground">
-                        {examData.answerSheets.length} answer sheet{examData.answerSheets.length > 1 ? "s" : ""} ready
+                        {examData.answerSheets.length} page{examData.answerSheets.length > 1 ? "s" : ""} ready
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        Click "Start AI Evaluation" to begin processing
+                        Click "Start AI Evaluation" to begin OCR and scoring
                       </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isProcessing && (
+                <div className="p-4 rounded-lg bg-secondary border border-border space-y-3">
+                  <div className="flex items-center gap-3">
+                    <svg className="animate-spin h-5 w-5 text-primary" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    <span className="text-foreground font-medium">{processingStatus}</span>
+                  </div>
+                  <Progress value={processingProgress} className="h-2" />
+                </div>
+              )}
+
+              {evaluationError && (
+                <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="w-6 h-6 text-destructive" />
+                    <div>
+                      <p className="font-medium text-foreground">Evaluation Failed</p>
+                      <p className="text-sm text-muted-foreground">{evaluationError}</p>
                     </div>
                   </div>
                 </div>
@@ -289,7 +389,7 @@ Q2 (15 marks):
             <Button
               variant="outline"
               onClick={handleBack}
-              disabled={currentStep === 1}
+              disabled={currentStep === 1 || isProcessing}
               className="gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
