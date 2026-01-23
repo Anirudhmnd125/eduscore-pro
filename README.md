@@ -1,73 +1,125 @@
-# Welcome to your Lovable project
+# ExamAI Pro - AI-Powered Exam Evaluation System
 
-## Project info
+An intelligent exam evaluation platform that uses AI to grade student answer sheets against model answers and rubrics.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Requirements
 
-## How can I edit this code?
+### System Requirements
+- **Node.js**: v18.0.0 or higher
+- **npm**: v9.0.0 or higher (comes with Node.js)
+- **Git**: For version control
 
-There are several ways of editing your application.
+### Browser Support
+- Chrome (recommended)
+- Firefox
+- Safari
+- Edge
 
-**Use Lovable**
+## Tech Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- **Frontend**: React 18, TypeScript, Vite
+- **Styling**: Tailwind CSS, shadcn/ui
+- **State Management**: TanStack React Query
+- **Routing**: React Router v6
+- **Backend**: Lovable Cloud (Supabase)
+- **AI**: Gemini AI for OCR and evaluation
 
-Changes made via Lovable will be committed automatically to this repo.
+## Local Development Setup
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+### Step 1: Clone the Repository
+```bash
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
 cd <YOUR_PROJECT_NAME>
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Step 2: Install Dependencies
+```bash
+npm install
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Step 3: Environment Variables
+Create a `.env` file in the root directory (if not already present):
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+VITE_SUPABASE_PROJECT_ID=your_project_id
+```
+
+> **Note**: If you cloned from Lovable, these are pre-configured.
+
+### Step 4: Start Development Server
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The app will be available at `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Available Scripts
 
-**Use GitHub Codespaces**
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview production build |
+| `npm run lint` | Run ESLint |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project Structure
 
-## What technologies are used for this project?
+```
+├── src/
+│   ├── components/     # Reusable UI components
+│   │   ├── ui/         # shadcn/ui components
+│   │   └── layout/     # Layout components
+│   ├── hooks/          # Custom React hooks
+│   ├── lib/            # Utilities and API functions
+│   ├── pages/          # Page components
+│   │   ├── admin/      # Admin dashboard pages
+│   │   ├── faculty/    # Faculty pages
+│   │   └── student/    # Student pages
+│   └── integrations/   # Supabase client and types
+├── supabase/
+│   ├── functions/      # Edge functions (OCR, evaluation)
+│   └── migrations/     # Database migrations
+└── public/             # Static assets
+```
 
-This project is built with:
+## Features
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- **Role-based Authentication**: Admin, Faculty, and Student roles
+- **AI-Powered OCR**: Extract text from handwritten answer sheets
+- **Automated Grading**: AI evaluates answers against rubrics
+- **Detailed Feedback**: Per-question breakdown with strengths/weaknesses
+- **Faculty Dashboard**: Upload exams, view evaluations, manage results
+- **Admin Dashboard**: User management, evaluation history
 
-## How can I deploy this project?
+## Troubleshooting
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+### Common Issues
 
-## Can I connect a custom domain to my Lovable project?
+1. **Port 8080 in use**: 
+   ```bash
+   # Kill process on port 8080
+   npx kill-port 8080
+   ```
 
-Yes, you can!
+2. **Node version mismatch**:
+   ```bash
+   # Using nvm
+   nvm use 18
+   ```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+3. **Dependencies not installing**:
+   ```bash
+   rm -rf node_modules package-lock.json
+   npm install
+   ```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Deployment
+
+Deploy via Lovable: Open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) → Share → Publish
+
+## Custom Domain
+
+Navigate to Project > Settings > Domains and click Connect Domain.
+
+Read more: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
