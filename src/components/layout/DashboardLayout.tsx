@@ -1,5 +1,6 @@
 import { Outlet, useNavigate } from "react-router-dom";
 import { AppSidebar } from "@/components/ui/app-sidebar";
+import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardLayoutProps {
   role: "admin" | "faculty" | "student";
@@ -7,13 +8,15 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ role }: DashboardLayoutProps) {
   const navigate = useNavigate();
+  const { profile, signOut } = useAuth();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut();
     navigate("/login");
   };
 
-  // In production, this would come from auth context
-  const userName = role === "admin" ? "Dr. Admin" : role === "faculty" ? "Prof. Johnson" : "Alex Student";
+  const userName = profile?.full_name || 
+    (role === "admin" ? "Admin" : role === "faculty" ? "Faculty" : "Student");
 
   return (
     <div className="min-h-screen bg-background">

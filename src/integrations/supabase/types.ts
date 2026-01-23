@@ -14,16 +14,229 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      evaluations: {
+        Row: {
+          ai_evaluation: Json | null
+          answer_sheet_url: string | null
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          evaluated_at: string | null
+          exam_id: string
+          faculty_override: Json | null
+          grade: string | null
+          id: string
+          max_marks: number | null
+          percentage: number | null
+          status: string
+          student_id: string | null
+          student_name: string | null
+          student_roll_number: string | null
+          total_marks_obtained: number | null
+          updated_at: string
+        }
+        Insert: {
+          ai_evaluation?: Json | null
+          answer_sheet_url?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          evaluated_at?: string | null
+          exam_id: string
+          faculty_override?: Json | null
+          grade?: string | null
+          id?: string
+          max_marks?: number | null
+          percentage?: number | null
+          status?: string
+          student_id?: string | null
+          student_name?: string | null
+          student_roll_number?: string | null
+          total_marks_obtained?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ai_evaluation?: Json | null
+          answer_sheet_url?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          evaluated_at?: string | null
+          exam_id?: string
+          faculty_override?: Json | null
+          grade?: string | null
+          id?: string
+          max_marks?: number | null
+          percentage?: number | null
+          status?: string
+          student_id?: string | null
+          student_name?: string | null
+          student_roll_number?: string | null
+          total_marks_obtained?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluations_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exams: {
+        Row: {
+          created_at: string
+          faculty_id: string
+          id: string
+          model_answer_url: string | null
+          question_paper_url: string | null
+          rubric: string | null
+          subject: string
+          title: string
+          total_marks: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          faculty_id: string
+          id?: string
+          model_answer_url?: string | null
+          question_paper_url?: string | null
+          rubric?: string | null
+          subject: string
+          title: string
+          total_marks: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          faculty_id?: string
+          id?: string
+          model_answer_url?: string | null
+          question_paper_url?: string | null
+          rubric?: string | null
+          subject?: string
+          title?: string
+          total_marks?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      question_evaluations: {
+        Row: {
+          created_at: string
+          criteria_breakdown: Json | null
+          evaluation_id: string
+          feedback: string | null
+          id: string
+          marks_obtained: number
+          max_marks: number
+          question_id: string
+          strengths: string[] | null
+          weaknesses: string[] | null
+        }
+        Insert: {
+          created_at?: string
+          criteria_breakdown?: Json | null
+          evaluation_id: string
+          feedback?: string | null
+          id?: string
+          marks_obtained: number
+          max_marks: number
+          question_id: string
+          strengths?: string[] | null
+          weaknesses?: string[] | null
+        }
+        Update: {
+          created_at?: string
+          criteria_breakdown?: Json | null
+          evaluation_id?: string
+          feedback?: string | null
+          id?: string
+          marks_obtained?: number
+          max_marks?: number
+          question_id?: string
+          strengths?: string[] | null
+          weaknesses?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_evaluations_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "faculty" | "student"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +363,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "faculty", "student"],
+    },
   },
 } as const

@@ -4,28 +4,51 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AcademicCard } from "@/components/ui/academic-card";
-import { GraduationCap, Mail, Lock, ArrowRight } from "lucide-react";
+import { GraduationCap, Mail, Lock, ArrowRight, User } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 type UserRole = "admin" | "faculty" | "student";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { signIn, signUp, roles } = useAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
   const [selectedRole, setSelectedRole] = useState<UserRole>("faculty");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate login - in production this would use Supabase Auth
-    setTimeout(() => {
+    try {
+      if (isSignUp) {
+        const { success, error } = await signUp(email, password, fullName, selectedRole);
+        if (success) {
+          toast.success("Account created successfully! You can now sign in.");
+          setIsSignUp(false);
+          setPassword("");
+        } else {
+          toast.error(error || "Failed to create account");
+        }
+      } else {
+        const { success, error } = await signIn(email, password);
+        if (success) {
+          toast.success("Welcome back!");
+          // Navigate based on user's role (handled by App.tsx route protection)
+          navigate(`/${selectedRole}`);
+        } else {
+          toast.error(error || "Invalid credentials");
+        }
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred");
+    } finally {
       setIsLoading(false);
-      toast.success(`Welcome! Logged in as ${selectedRole}`);
-      navigate(`/${selectedRole}`);
-    }, 1000);
+    }
   };
 
   const roleOptions: { value: UserRole; label: string; description: string }[] = [
@@ -94,8 +117,12 @@ export default function Login() {
           </div>
 
           <div className="text-center mb-8">
-            <h2 className="font-heading text-2xl font-bold text-foreground">Welcome back</h2>
-            <p className="text-muted-foreground mt-2">Sign in to your account to continue</p>
+            <h2 className="font-heading text-2xl font-bold text-foreground">
+              {isSignUp ? "Create an account" : "Welcome back"}
+            </h2>
+            <p className="text-muted-foreground mt-2">
+              {isSignUp ? "Sign up to get started" : "Sign in to your account to continue"}
+            </p>
           </div>
 
           {/* Role selector */}
@@ -119,7 +146,25 @@ export default function Login() {
           </div>
 
           <AcademicCard>
-            <form onSubmit={handleLogin} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="fullName"
+                      type="text"
+                      placeholder="John Doe"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="pl-10"
+                      required={isSignUp}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email address</Label>
                 <div className="relative">
@@ -139,9 +184,11 @@ export default function Login() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <button type="button" className="text-sm text-primary hover:underline">
-                    Forgot password?
-                  </button>
+                  {!isSignUp && (
+                    <button type="button" className="text-sm text-primary hover:underline">
+                      Forgot password?
+                    </button>
+                  )}
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -153,6 +200,7 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10"
                     required
+                    minLength={6}
                   />
                 </div>
               </div>
@@ -164,11 +212,11 @@ export default function Login() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    Signing in...
+                    {isSignUp ? "Creating account..." : "Signing in..."}
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
-                    Sign in as {selectedRole}
+                    {isSignUp ? "Create account" : `Sign in as ${selectedRole}`}
                     <ArrowRight className="w-4 h-4" />
                   </span>
                 )}
@@ -177,9 +225,15 @@ export default function Login() {
           </AcademicCard>
 
           <p className="text-center text-sm text-muted-foreground mt-6">
-            Don't have an account?{" "}
-            <button className="text-primary font-medium hover:underline">
-              Contact your administrator
+            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+            <button
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setPassword("");
+              }}
+              className="text-primary font-medium hover:underline"
+            >
+              {isSignUp ? "Sign in" : "Sign up"}
             </button>
           </p>
         </div>
