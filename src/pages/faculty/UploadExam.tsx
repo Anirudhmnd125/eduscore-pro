@@ -342,12 +342,12 @@ Q3 (10 marks):
                 description="Upload student answer booklets for evaluation"
               />
               <FileUploadZone
-                accept=".jpg,.jpeg,.png,.webp"
+                accept=".pdf,.jpg,.jpeg,.png,.webp"
                 multiple
                 maxSize={20}
                 onFilesSelected={(files) => setExamData({ ...examData, answerSheets: files })}
-                label="Upload Answer Sheet Images"
-                description="Upload scanned images of answer booklets (JPG, PNG, WEBP)"
+                label="Upload Answer Sheets"
+                description="Upload scanned answer sheets (PDF, JPG, PNG, WEBP)"
               />
               
               {examData.answerSheets.length > 0 && (
