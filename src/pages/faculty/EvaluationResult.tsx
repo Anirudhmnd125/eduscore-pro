@@ -68,7 +68,53 @@ export default function EvaluationResult() {
 
   const { examData, result } = evaluation;
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
+    if (evaluation?.evaluationId) {
+      try {
+        const newTotal = getTotalScore();
+        const newPercentage = Math.round((newTotal / result.max_score) * 100);
+        
+        // Update evaluation record with faculty overrides
+        const { error: evalError } = await supabase
+          .from("evaluations")
+          .update({
+            faculty_override: { editedScores, editedFeedback } as any,
+            total_marks_obtained: newTotal,
+            percentage: newPercentage,
+            status: "approved",
+            approved_at: new Date().toISOString(),
+          })
+          .eq("id", evaluation.evaluationId);
+
+        if (evalError) {
+          console.error("Error updating evaluation:", evalError);
+          toast.error("Failed to save changes to database");
+          return;
+        }
+
+        // Update individual question scores if changed
+        for (const [questionId, marks] of Object.entries(editedScores)) {
+          await supabase
+            .from("question_evaluations")
+            .update({ marks_obtained: marks })
+            .eq("evaluation_id", evaluation.evaluationId)
+            .eq("question_id", questionId);
+        }
+
+        for (const [questionId, feedback] of Object.entries(editedFeedback)) {
+          await supabase
+            .from("question_evaluations")
+            .update({ feedback })
+            .eq("evaluation_id", evaluation.evaluationId)
+            .eq("question_id", questionId);
+        }
+      } catch (err) {
+        console.error("Save error:", err);
+        toast.error("Failed to save changes");
+        return;
+      }
+    }
+    
     setIsEditing(false);
     toast.success("Evaluation updated and approved!");
   };
