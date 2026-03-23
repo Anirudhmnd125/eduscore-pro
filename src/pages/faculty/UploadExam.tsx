@@ -20,6 +20,8 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { processAndEvaluateExam, FullEvaluationResult } from "@/lib/api/evaluation";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 type UploadStep = 1 | 2 | 3 | 4;
 
