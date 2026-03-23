@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { AcademicCard, AcademicCardHeader } from "@/components/ui/academic-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ScoreDisplay, ScoreCircle } from "@/components/ui/score-display";
