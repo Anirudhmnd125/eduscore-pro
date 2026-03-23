@@ -102,7 +102,8 @@ export default function UploadExam() {
       toast.success("Evaluation completed successfully!");
 
       // Save to database
-      onProgress?.("Saving results to database...", 95);
+      setProcessingStatus("Saving results to database...");
+      setProcessingProgress(95);
 
       // 1. Create exam record
       const { data: examRecord, error: examError } = await supabase
