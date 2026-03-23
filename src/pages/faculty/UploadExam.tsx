@@ -38,6 +38,7 @@ interface ExamData {
 
 export default function UploadExam() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState<UploadStep>(1);
   const [examData, setExamData] = useState<ExamData>({
     examName: "",
