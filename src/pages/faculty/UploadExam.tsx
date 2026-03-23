@@ -100,7 +100,75 @@ export default function UploadExam() {
 
       setEvaluationResult(result.data);
       toast.success("Evaluation completed successfully!");
-      
+
+      // Save to database
+      onProgress?.("Saving results to database...", 95);
+
+      // 1. Create exam record
+      const { data: examRecord, error: examError } = await supabase
+        .from("exams")
+        .insert({
+          faculty_id: user!.id,
+          title: examData.examName,
+          subject: examData.subject,
+          total_marks: examData.totalMarks,
+          rubric: examData.rubric,
+        })
+        .select()
+        .single();
+
+      if (examError) {
+        console.error("Error saving exam:", examError);
+        toast.error("Evaluation completed but failed to save to database");
+      }
+
+      let evaluationId: string | null = null;
+
+      if (examRecord) {
+        // 2. Create evaluation record
+        const evalData = result.data;
+        const { data: evalRecord, error: evalError } = await supabase
+          .from("evaluations")
+          .insert({
+            exam_id: examRecord.id,
+            status: "evaluated",
+            total_marks_obtained: evalData.total_score,
+            max_marks: evalData.max_score,
+            percentage: evalData.percentage,
+            grade: evalData.grade,
+            ai_evaluation: evalData as any,
+            evaluated_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (evalError) {
+          console.error("Error saving evaluation:", evalError);
+        } else if (evalRecord) {
+          evaluationId = evalRecord.id;
+
+          // 3. Save question-level evaluations
+          const questionRows = evalData.questions.map((q) => ({
+            evaluation_id: evalRecord.id,
+            question_id: q.question_id,
+            marks_obtained: q.total_marks,
+            max_marks: q.max_marks,
+            criteria_breakdown: q.criteria_breakdown as any,
+            strengths: q.strengths,
+            weaknesses: q.weaknesses,
+            feedback: q.feedback,
+          }));
+
+          const { error: qError } = await supabase
+            .from("question_evaluations")
+            .insert(questionRows);
+
+          if (qError) {
+            console.error("Error saving question evaluations:", qError);
+          }
+        }
+      }
+
       // Store result in sessionStorage for the results page
       sessionStorage.setItem("lastEvaluation", JSON.stringify({
         examData: {
@@ -109,6 +177,8 @@ export default function UploadExam() {
           totalMarks: examData.totalMarks,
         },
         result: result.data,
+        evaluationId,
+        examId: examRecord?.id ?? null,
         timestamp: new Date().toISOString(),
       }));
       
