@@ -29,6 +29,8 @@ interface StoredEvaluation {
     totalMarks: number;
   };
   result: FullEvaluationResult;
+  evaluationId: string | null;
+  examId: string | null;
   timestamp: string;
 }
 
