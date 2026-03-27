@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AcademicCard, AcademicCardHeader } from "@/components/ui/academic-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ScoreCircle } from "@/components/ui/score-display";
@@ -11,52 +11,76 @@ import {
   Eye
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 type EvaluationStatus = "pending" | "evaluated" | "reviewed";
 
-interface Evaluation {
-  id: number;
-  student: string;
-  rollNo: string;
-  exam: string;
-  subject: string;
-  status: EvaluationStatus;
-  aiScore: number;
-  finalScore: number;
-  maxScore: number;
-  date: string;
+interface EvaluationRow {
+  id: string;
+  student_name: string | null;
+  student_roll_number: string | null;
+  status: string;
+  total_marks_obtained: number | null;
+  max_marks: number | null;
+  percentage: number | null;
+  grade: string | null;
+  created_at: string;
+  exams: { title: string; subject: string } | null;
 }
 
-// Mock data
-const evaluations: Evaluation[] = [
-  { id: 1, student: "John Smith", rollNo: "CS2021045", exam: "Data Structures Mid-Term", subject: "Computer Science", status: "reviewed", aiScore: 78, finalScore: 80, maxScore: 100, date: "2024-01-15" },
-  { id: 2, student: "Emily Chen", rollNo: "CS2021032", exam: "Data Structures Mid-Term", subject: "Computer Science", status: "evaluated", aiScore: 92, finalScore: 92, maxScore: 100, date: "2024-01-15" },
-  { id: 3, student: "Michael Brown", rollNo: "CS2021018", exam: "Data Structures Mid-Term", subject: "Computer Science", status: "pending", aiScore: 0, finalScore: 0, maxScore: 100, date: "2024-01-15" },
-  { id: 4, student: "Sarah Davis", rollNo: "CS2021056", exam: "Data Structures Mid-Term", subject: "Computer Science", status: "reviewed", aiScore: 85, finalScore: 85, maxScore: 100, date: "2024-01-14" },
-  { id: 5, student: "James Wilson", rollNo: "CS2021023", exam: "Algorithms Final", subject: "Computer Science", status: "evaluated", aiScore: 72, finalScore: 72, maxScore: 100, date: "2024-01-14" },
-  { id: 6, student: "Amanda Taylor", rollNo: "CS2021041", exam: "Algorithms Final", subject: "Computer Science", status: "pending", aiScore: 0, finalScore: 0, maxScore: 100, date: "2024-01-14" },
-  { id: 7, student: "Robert Martinez", rollNo: "IT2021015", exam: "Database Systems Quiz", subject: "Information Technology", status: "reviewed", aiScore: 45, finalScore: 47, maxScore: 50, date: "2024-01-13" },
-  { id: 8, student: "Lisa Anderson", rollNo: "IT2021028", exam: "Database Systems Quiz", subject: "Information Technology", status: "evaluated", aiScore: 42, finalScore: 42, maxScore: 50, date: "2024-01-13" },
-];
-
 export default function FacultyEvaluations() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<EvaluationStatus | "all">("all");
+  const [evaluations, setEvaluations] = useState<EvaluationRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    async function fetchEvaluations() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("evaluations")
+        .select("id, student_name, student_roll_number, status, total_marks_obtained, max_marks, percentage, grade, created_at, exams(title, subject)")
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        const rows = (data as any[]).map((d) => ({
+          ...d,
+          exams: Array.isArray(d.exams) ? d.exams[0] : d.exams,
+        })) as EvaluationRow[];
+        setEvaluations(rows);
+      }
+      setLoading(false);
+    }
+    fetchEvaluations();
+  }, [user]);
+
+  const statusMap = (s: string): EvaluationStatus => {
+    if (s === "approved") return "reviewed";
+    if (s === "completed") return "evaluated";
+    return "pending";
+  };
 
   const filteredEvaluations = evaluations.filter((e) => {
-    const matchesSearch = 
-      e.student.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      e.rollNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      e.exam.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || e.status === statusFilter;
+    const name = e.student_name || "";
+    const roll = e.student_roll_number || "";
+    const exam = e.exams?.title || "";
+    const matchesSearch =
+      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      roll.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      exam.toLowerCase().includes(searchQuery.toLowerCase());
+    const mappedStatus = statusMap(e.status);
+    const matchesStatus = statusFilter === "all" || mappedStatus === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const statusCounts = {
     all: evaluations.length,
-    pending: evaluations.filter((e) => e.status === "pending").length,
-    evaluated: evaluations.filter((e) => e.status === "evaluated").length,
-    reviewed: evaluations.filter((e) => e.status === "reviewed").length,
+    pending: evaluations.filter((e) => statusMap(e.status) === "pending").length,
+    evaluated: evaluations.filter((e) => statusMap(e.status) === "evaluated").length,
+    reviewed: evaluations.filter((e) => statusMap(e.status) === "reviewed").length,
   };
 
   return (
@@ -106,57 +130,58 @@ export default function FacultyEvaluations() {
                 </th>
                 <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Exam</th>
                 <th className="text-center py-4 px-4 text-sm font-medium text-muted-foreground">Status</th>
-                <th className="text-center py-4 px-4 text-sm font-medium text-muted-foreground">AI Score</th>
-                <th className="text-center py-4 px-4 text-sm font-medium text-muted-foreground">Final Score</th>
+                <th className="text-center py-4 px-4 text-sm font-medium text-muted-foreground">Score</th>
+                <th className="text-center py-4 px-4 text-sm font-medium text-muted-foreground">Grade</th>
                 <th className="text-left py-4 px-4 text-sm font-medium text-muted-foreground">Date</th>
                 <th className="text-right py-4 px-4 text-sm font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredEvaluations.map((evaluation) => (
+              {loading && (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-muted-foreground">Loading...</td>
+                </tr>
+              )}
+              {!loading && filteredEvaluations.map((evaluation) => (
                 <tr 
                   key={evaluation.id} 
                   className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors"
                 >
                   <td className="py-4 px-4">
                     <div>
-                      <p className="font-medium text-foreground">{evaluation.student}</p>
-                      <p className="text-sm text-muted-foreground">{evaluation.rollNo}</p>
+                      <p className="font-medium text-foreground">{evaluation.student_name || "Unknown Student"}</p>
+                      <p className="text-sm text-muted-foreground">{evaluation.student_roll_number || "—"}</p>
                     </div>
                   </td>
                   <td className="py-4 px-4">
                     <div>
-                      <p className="text-foreground">{evaluation.exam}</p>
-                      <p className="text-sm text-muted-foreground">{evaluation.subject}</p>
+                      <p className="text-foreground">{evaluation.exams?.title || "Untitled Exam"}</p>
+                      <p className="text-sm text-muted-foreground">{evaluation.exams?.subject || ""}</p>
                     </div>
                   </td>
                   <td className="py-4 px-4 text-center">
-                    <StatusBadge status={evaluation.status} />
+                    <StatusBadge status={statusMap(evaluation.status)} />
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex justify-center">
-                      {evaluation.status !== "pending" ? (
-                        <ScoreCircle score={evaluation.aiScore} maxScore={evaluation.maxScore} size={45} />
+                      {evaluation.total_marks_obtained != null && evaluation.max_marks != null ? (
+                        <ScoreCircle score={evaluation.total_marks_obtained} maxScore={evaluation.max_marks} size={45} />
                       ) : (
                         <span className="text-muted-foreground text-sm">—</span>
                       )}
                     </div>
                   </td>
-                  <td className="py-4 px-4">
-                    <div className="flex justify-center">
-                      {evaluation.status === "reviewed" ? (
-                        <ScoreCircle score={evaluation.finalScore} maxScore={evaluation.maxScore} size={45} />
-                      ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
-                      )}
-                    </div>
+                  <td className="py-4 px-4 text-center">
+                    <span className="font-medium text-foreground">{evaluation.grade || "—"}</span>
                   </td>
-                  <td className="py-4 px-4 text-foreground">{evaluation.date}</td>
+                  <td className="py-4 px-4 text-foreground">
+                    {new Date(evaluation.created_at).toLocaleDateString()}
+                  </td>
                   <td className="py-4 px-4 text-right">
                     <Link to={`/faculty/evaluations/${evaluation.id}`}>
                       <Button variant="ghost" size="sm" className="gap-1">
                         <Eye className="w-4 h-4" />
-                        {evaluation.status === "evaluated" ? "Review" : "View"}
+                        {statusMap(evaluation.status) === "evaluated" ? "Review" : "View"}
                       </Button>
                     </Link>
                   </td>
@@ -166,7 +191,7 @@ export default function FacultyEvaluations() {
           </table>
         </div>
 
-        {filteredEvaluations.length === 0 && (
+        {!loading && filteredEvaluations.length === 0 && (
           <div className="text-center py-12">
             <Filter className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="font-medium text-foreground mb-1">No evaluations found</h3>
