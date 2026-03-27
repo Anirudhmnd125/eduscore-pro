@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { StatCard, AcademicCard, AcademicCardHeader } from "@/components/ui/academic-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ScoreCircle } from "@/components/ui/score-display";
@@ -10,32 +11,79 @@ import {
   Users,
   ArrowRight,
   TrendingUp,
-  AlertCircle
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
-// Mock data for demo
-const recentEvaluations = [
-  { id: 1, student: "John Smith", exam: "Data Structures Mid-Term", status: "reviewed" as const, score: 78, maxScore: 100, date: "2024-01-15" },
-  { id: 2, student: "Emily Chen", exam: "Data Structures Mid-Term", status: "evaluated" as const, score: 92, maxScore: 100, date: "2024-01-15" },
-  { id: 3, student: "Michael Brown", exam: "Data Structures Mid-Term", status: "pending" as const, score: 0, maxScore: 100, date: "2024-01-15" },
-  { id: 4, student: "Sarah Davis", exam: "Algorithms Final", status: "reviewed" as const, score: 85, maxScore: 100, date: "2024-01-14" },
-];
-
-const pendingReviews = [
-  { id: 1, exam: "Data Structures Mid-Term", count: 12, urgent: true },
-  { id: 2, exam: "Algorithms Final", count: 8, urgent: false },
-  { id: 3, exam: "Database Systems Quiz", count: 25, urgent: true },
-];
+interface EvaluationRow {
+  id: string;
+  student_name: string | null;
+  student_roll_number: string | null;
+  status: string;
+  total_marks_obtained: number | null;
+  max_marks: number | null;
+  percentage: number | null;
+  grade: string | null;
+  created_at: string;
+  exams: { title: string; subject: string } | null;
+}
 
 export default function FacultyDashboard() {
+  const { user } = useAuth();
+  const [evaluations, setEvaluations] = useState<EvaluationRow[]>([]);
+  const [stats, setStats] = useState({ total: 0, pending: 0, completed: 0, avgScore: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+
+    async function fetchData() {
+      setLoading(true);
+
+      // Fetch recent evaluations with exam info
+      const { data, error } = await supabase
+        .from("evaluations")
+        .select("id, student_name, student_roll_number, status, total_marks_obtained, max_marks, percentage, grade, created_at, exams(title, subject)")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (!error && data) {
+        const rows = (data as any[]).map((d) => ({
+          ...d,
+          exams: Array.isArray(d.exams) ? d.exams[0] : d.exams,
+        })) as EvaluationRow[];
+        setEvaluations(rows);
+
+        const total = rows.length;
+        const pending = rows.filter((e) => e.status === "pending").length;
+        const completed = rows.filter((e) => e.status !== "pending").length;
+        const scored = rows.filter((e) => e.percentage != null);
+        const avgScore = scored.length > 0
+          ? Math.round(scored.reduce((s, e) => s + (e.percentage ?? 0), 0) / scored.length)
+          : 0;
+
+        setStats({ total, pending, completed, avgScore });
+      }
+      setLoading(false);
+    }
+
+    fetchData();
+  }, [user]);
+
+  const statusMap = (s: string): "pending" | "evaluated" | "reviewed" => {
+    if (s === "approved" || s === "reviewed") return "reviewed";
+    if (s === "evaluated") return "evaluated";
+    return "pending";
+  };
+
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading text-3xl font-bold text-foreground">Faculty Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Welcome back, Prof. Johnson. Here's your evaluation overview.</p>
+          <p className="text-muted-foreground mt-1">Here's your evaluation overview.</p>
         </div>
         <Link to="/faculty/upload">
           <Button size="lg" className="gap-2">
@@ -47,115 +95,58 @@ export default function FacultyDashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          label="Total Evaluations"
-          value="156"
-          icon={<FileText className="w-6 h-6" />}
-          trend={{ value: 12, isPositive: true }}
-        />
-        <StatCard
-          label="Pending Review"
-          value="45"
-          icon={<Clock className="w-6 h-6" />}
-        />
-        <StatCard
-          label="Completed Today"
-          value="23"
-          icon={<CheckCircle className="w-6 h-6" />}
-          trend={{ value: 8, isPositive: true }}
-        />
-        <StatCard
-          label="Average Score"
-          value="76%"
-          icon={<TrendingUp className="w-6 h-6" />}
-          trend={{ value: 3, isPositive: true }}
-        />
+        <StatCard label="Total Evaluations" value={String(stats.total)} icon={<FileText className="w-6 h-6" />} />
+        <StatCard label="Pending Review" value={String(stats.pending)} icon={<Clock className="w-6 h-6" />} />
+        <StatCard label="Completed" value={String(stats.completed)} icon={<CheckCircle className="w-6 h-6" />} />
+        <StatCard label="Average Score" value={`${stats.avgScore}%`} icon={<TrendingUp className="w-6 h-6" />} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Evaluations */}
-        <div className="lg:col-span-2">
-          <AcademicCard>
-            <AcademicCardHeader 
-              title="Recent Evaluations" 
-              description="Latest answer sheet evaluations"
-              action={
-                <Link to="/faculty/evaluations">
-                  <Button variant="ghost" size="sm" className="gap-1">
-                    View all <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
-              }
-            />
-            
-            <div className="space-y-4">
-              {recentEvaluations.map((evaluation) => (
-                <div 
-                  key={evaluation.id} 
-                  className="flex items-center gap-4 p-4 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                >
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground truncate">{evaluation.student}</p>
-                    <p className="text-sm text-muted-foreground truncate">{evaluation.exam}</p>
-                  </div>
-                  <StatusBadge status={evaluation.status} />
-                  {evaluation.status !== "pending" && (
-                    <ScoreCircle score={evaluation.score} maxScore={evaluation.maxScore} size={50} />
-                  )}
-                  <Button variant="ghost" size="sm">
-                    View
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </AcademicCard>
-        </div>
-
-        {/* Pending Reviews */}
-        <div>
-          <AcademicCard>
-            <AcademicCardHeader 
-              title="Pending Reviews" 
-              description="Exams awaiting your review"
-            />
-            
-            <div className="space-y-3">
-              {pendingReviews.map((review) => (
-                <div 
-                  key={review.id}
-                  className="p-4 rounded-xl border border-border hover:border-primary/30 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <p className="font-medium text-foreground text-sm">{review.exam}</p>
-                    {review.urgent && (
-                      <AlertCircle className="w-4 h-4 text-status-pending" />
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      {review.count} sheets pending
-                    </span>
-                    <Button variant="outline" size="sm">
-                      Review
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 pt-4 border-t border-border">
-              <Link to="/faculty/evaluations">
-                <Button variant="secondary" className="w-full">
-                  View All Pending
-                </Button>
+      {/* Recent Evaluations */}
+      <AcademicCard>
+        <AcademicCardHeader 
+          title="Recent Evaluations" 
+          description="Latest answer sheet evaluations"
+          action={
+            <Link to="/faculty/evaluations">
+              <Button variant="ghost" size="sm" className="gap-1">
+                View all <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          }
+        />
+        
+        <div className="space-y-4">
+          {loading && <p className="text-muted-foreground text-sm">Loading...</p>}
+          {!loading && evaluations.length === 0 && (
+            <p className="text-muted-foreground text-sm">No evaluations yet. Upload an exam to get started.</p>
+          )}
+          {evaluations.map((evaluation) => (
+            <div 
+              key={evaluation.id} 
+              className="flex items-center gap-4 p-4 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Users className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-foreground truncate">
+                  {evaluation.student_name || evaluation.student_roll_number || "Unknown Student"}
+                </p>
+                <p className="text-sm text-muted-foreground truncate">
+                  {evaluation.exams?.title || "Untitled Exam"} · {evaluation.exams?.subject || ""}
+                </p>
+              </div>
+              <StatusBadge status={statusMap(evaluation.status)} />
+              {evaluation.total_marks_obtained != null && evaluation.max_marks != null && (
+                <ScoreCircle score={evaluation.total_marks_obtained} maxScore={evaluation.max_marks} size={50} />
+              )}
+              <Link to={`/faculty/evaluations/${evaluation.id}`}>
+                <Button variant="ghost" size="sm">View</Button>
               </Link>
             </div>
-          </AcademicCard>
+          ))}
         </div>
-      </div>
+      </AcademicCard>
 
       {/* Quick Actions */}
       <AcademicCard>
