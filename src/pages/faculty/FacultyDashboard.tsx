@@ -72,8 +72,8 @@ export default function FacultyDashboard() {
   }, [user]);
 
   const statusMap = (s: string): "pending" | "evaluated" | "reviewed" => {
-    if (s === "approved" || s === "reviewed") return "reviewed";
-    if (s === "evaluated") return "evaluated";
+    if (s === "approved") return "reviewed";
+    if (s === "completed") return "evaluated";
     return "pending";
   };
 
