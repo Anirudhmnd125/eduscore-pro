@@ -56,8 +56,8 @@ export default function FacultyDashboard() {
         setEvaluations(rows);
 
         const total = rows.length;
-        const pending = rows.filter((e) => e.status === "pending").length;
-        const completed = rows.filter((e) => e.status !== "pending").length;
+        const pending = rows.filter((e) => e.status === "pending" || e.status === "processing").length;
+        const completed = rows.filter((e) => e.status === "completed" || e.status === "approved").length;
         const scored = rows.filter((e) => e.percentage != null);
         const avgScore = scored.length > 0
           ? Math.round(scored.reduce((s, e) => s + (e.percentage ?? 0), 0) / scored.length)
@@ -72,8 +72,8 @@ export default function FacultyDashboard() {
   }, [user]);
 
   const statusMap = (s: string): "pending" | "evaluated" | "reviewed" => {
-    if (s === "approved" || s === "reviewed") return "reviewed";
-    if (s === "evaluated") return "evaluated";
+    if (s === "approved") return "reviewed";
+    if (s === "completed") return "evaluated";
     return "pending";
   };
 
