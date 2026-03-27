@@ -116,12 +116,12 @@ Evaluate each answer strictly according to the rubric. Provide comprehensive fee
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro", // Using Pro for complex full-exam evaluation
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        max_tokens: 8000,
+        max_tokens: 16000,
       }),
     });
 
@@ -146,7 +146,21 @@ Evaluate each answer strictly according to the rubric. Provide comprehensive fee
       );
     }
 
-    const aiResponse = await response.json();
+    // Read as text first to avoid JSON parse errors on truncated responses
+    const responseText = await response.text();
+    let aiResponse;
+    try {
+      aiResponse = JSON.parse(responseText);
+    } catch (e) {
+      console.error("Failed to parse AI gateway response:", e);
+      console.error("Response text length:", responseText.length);
+      console.error("Response text tail:", responseText.slice(-200));
+      return new Response(
+        JSON.stringify({ success: false, error: "AI response was truncated or malformed. Please try again." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const content = aiResponse.choices?.[0]?.message?.content;
 
     if (!content) {
@@ -156,19 +170,15 @@ Evaluate each answer strictly according to the rubric. Provide comprehensive fee
       );
     }
 
-    // Parse the JSON response
+    // Robust JSON extraction
     let parsedResult;
     try {
-      const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
-                       content.match(/```\s*([\s\S]*?)\s*```/) ||
-                       [null, content];
-      const jsonStr = jsonMatch[1] || content;
-      parsedResult = JSON.parse(jsonStr.trim());
+      parsedResult = extractJsonFromResponse(content);
     } catch (parseError) {
-      console.error("Failed to parse AI response:", parseError);
-      console.error("Raw content:", content);
+      console.error("Failed to parse AI content:", parseError);
+      console.error("Raw content tail:", content.slice(-300));
       return new Response(
-        JSON.stringify({ success: false, error: "Failed to parse evaluation response" }),
+        JSON.stringify({ success: false, error: "Failed to parse evaluation response. Please try again." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
