@@ -137,6 +137,8 @@ export default function UploadExam() {
           .insert({
             exam_id: examRecord.id,
             status: "completed",
+            student_name: examData.studentName || null,
+            student_roll_number: examData.studentRollNumber || null,
             total_marks_obtained: evalData.total_score,
             max_marks: evalData.max_score,
             percentage: evalData.percentage,
