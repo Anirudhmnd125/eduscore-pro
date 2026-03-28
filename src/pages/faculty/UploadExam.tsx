@@ -46,6 +46,8 @@ export default function UploadExam() {
     examName: "",
     subject: "",
     totalMarks: 100,
+    studentName: "",
+    studentRollNumber: "",
     questionPaper: [],
     modelAnswers: [],
     modelAnswersText: "",
