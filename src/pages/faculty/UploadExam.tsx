@@ -29,6 +29,8 @@ interface ExamData {
   examName: string;
   subject: string;
   totalMarks: number;
+  studentName: string;
+  studentRollNumber: string;
   questionPaper: File[];
   modelAnswers: File[];
   modelAnswersText: string;
@@ -44,6 +46,8 @@ export default function UploadExam() {
     examName: "",
     subject: "",
     totalMarks: 100,
+    studentName: "",
+    studentRollNumber: "",
     questionPaper: [],
     modelAnswers: [],
     modelAnswersText: "",
@@ -133,6 +137,8 @@ export default function UploadExam() {
           .insert({
             exam_id: examRecord.id,
             status: "completed",
+            student_name: examData.studentName || null,
+            student_roll_number: examData.studentRollNumber || null,
             total_marks_obtained: evalData.total_score,
             max_marks: evalData.max_score,
             percentage: evalData.percentage,
@@ -294,6 +300,24 @@ export default function UploadExam() {
                     placeholder="100"
                     value={examData.totalMarks}
                     onChange={(e) => setExamData({ ...examData, totalMarks: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="studentName">Student Name</Label>
+                  <Input
+                    id="studentName"
+                    placeholder="e.g., John Smith"
+                    value={examData.studentName}
+                    onChange={(e) => setExamData({ ...examData, studentName: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="studentRollNumber">Roll Number</Label>
+                  <Input
+                    id="studentRollNumber"
+                    placeholder="e.g., CS2021045"
+                    value={examData.studentRollNumber}
+                    onChange={(e) => setExamData({ ...examData, studentRollNumber: e.target.value })}
                   />
                 </div>
               </div>
