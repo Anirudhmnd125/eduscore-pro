@@ -29,6 +29,8 @@ interface ExamData {
   examName: string;
   subject: string;
   totalMarks: number;
+  studentName: string;
+  studentRollNumber: string;
   questionPaper: File[];
   modelAnswers: File[];
   modelAnswersText: string;
