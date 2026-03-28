@@ -300,6 +300,24 @@ export default function UploadExam() {
                     onChange={(e) => setExamData({ ...examData, totalMarks: parseInt(e.target.value) || 0 })}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="studentName">Student Name</Label>
+                  <Input
+                    id="studentName"
+                    placeholder="e.g., John Smith"
+                    value={examData.studentName}
+                    onChange={(e) => setExamData({ ...examData, studentName: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="studentRollNumber">Roll Number</Label>
+                  <Input
+                    id="studentRollNumber"
+                    placeholder="e.g., CS2021045"
+                    value={examData.studentRollNumber}
+                    onChange={(e) => setExamData({ ...examData, studentRollNumber: e.target.value })}
+                  />
+                </div>
               </div>
             </div>
           )}
